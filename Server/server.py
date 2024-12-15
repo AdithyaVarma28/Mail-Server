@@ -9,10 +9,8 @@ class Server:
         self.socket.bind((HOST,PORT))
         self.socket.listen()
         self.setup_database()
-        print("Server waiting for connection...")
-        client_socket, address=self.socket.accept()
-        print(f"Connection from: {str(address)}")
-        self.talk_to_client(client_socket)
+        print("Server waiting for connections...")
+        self.accept_clients()
 
     def setup_database(self):
         conn=sqlite3.connect("server_messages.db")
@@ -26,15 +24,15 @@ class Server:
             )
         """)
         conn.commit()
-        conn.close() 
+        conn.close()
 
     def save_message_to_db(self,sender_email,receiver_email,message):
-        conn = sqlite3.connect("server_messages.db")
-        cursor = conn.cursor()
+        conn=sqlite3.connect("server_messages.db")
+        cursor=conn.cursor()
         cursor.execute("INSERT INTO messages (sender_email,receiver_email,message) VALUES (?,?,?)",
                        (sender_email,receiver_email,message))
         conn.commit()
-        conn.close()  
+        conn.close()
 
     def fetch_messages_for_email(self,email):
         conn=sqlite3.connect("server_messages.db")
@@ -43,13 +41,16 @@ class Server:
         messages=cursor.fetchall()
         cursor.execute("DELETE FROM messages WHERE receiver_email=?",(email,))
         conn.commit()
-        conn.close() 
+        conn.close()
         return messages
 
-    def talk_to_client(self,client_socket):
-        Thread(target=self.receive_message,args=(client_socket,)).start()
+    def accept_clients(self):
+        while True:
+            client_socket,address=self.socket.accept()
+            print(f"Connection from: {str(address)}")
+            Thread(target=self.talk_to_client,args=(client_socket,)).start()
 
-    def receive_message(self,client_socket):
+    def talk_to_client(self,client_socket):
         while True:
             try:
                 client_message=client_socket.recv(1024).decode()
@@ -66,12 +67,14 @@ class Server:
                     else:
                         client_socket.send("No emails found for your address.".encode())
                 elif client_message.strip()=="DISCONNECT":
-                    print("Client disconnected. Exiting...")
-                    os._exit(0)
+                    print("Client disconnected. Closing connection...")
+                    client_socket.close()
+                    break
                 else:
                     print(f"Client: {client_message}")
             except ConnectionResetError:
-                print("Client disconnected abruptly. Exiting...")
-                os._exit(0)
+                print("Client disconnected abruptly. Closing connection...")
+                client_socket.close()
+                break
 
 Server("127.0.0.1",6969)
