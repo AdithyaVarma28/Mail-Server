@@ -1,6 +1,5 @@
 import socket
 from threading import Thread
-import os
 import sqlite3
 
 class Server:
@@ -39,10 +38,15 @@ class Server:
         cursor=conn.cursor()
         cursor.execute("SELECT sender_email,receiver_email,message FROM messages WHERE receiver_email=?",(email,))
         messages=cursor.fetchall()
+        conn.close()
+        return messages
+
+    def delete_messages_for_email(self,email):
+        conn=sqlite3.connect("server_messages.db")
+        cursor=conn.cursor()
         cursor.execute("DELETE FROM messages WHERE receiver_email=?",(email,))
         conn.commit()
         conn.close()
-        return messages
 
     def accept_clients(self):
         while True:
@@ -66,6 +70,10 @@ class Server:
                             client_socket.send(f"EMAIL_DATA|{sender}|{receiver}|{message}".encode())
                     else:
                         client_socket.send("No emails found for your address.".encode())
+                elif client_message.startswith("DELETE_EMAILS"):
+                    _,email=client_message.split("|",1)
+                    self.delete_messages_for_email(email)
+                    client_socket.send("Emails deleted successfully.".encode())
                 elif client_message.strip()=="DISCONNECT":
                     print("Client disconnected. Closing connection...")
                     client_socket.close()
@@ -77,4 +85,4 @@ class Server:
                 client_socket.close()
                 break
 
-Server("127.0.0.1",6969)
+Server("0.0.0.0",6969)
