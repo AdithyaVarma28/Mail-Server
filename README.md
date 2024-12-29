@@ -1,4 +1,4 @@
-# Lightweight Mail Server
+# Mail Server
 
 This project implements a lightweight email server and client system using Flask, SQLite, and Socket Programming. It ensures secure user authentication, efficient email management, and real-time communication between the server and multiple clients.
 
